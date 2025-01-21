@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Table Row</title>
+    <style>
+        .selected-row {
+            background-color: #f2fbff; /* 원하는 색상으로 변경 */
+        }
+
+        table.memtbl {
+            table-layout: fixed;
+            width: 100%;
+            box-sizing: border-box;
+            text-indent: initial;
+            border: none;
+            border-spacing: 0;
+            border-collapse: collapse;   
+        }
+
+        table.memtbl thead {
+            background-color: #f9f9f9;
+            height: 40px;
+        }
+        table.memtbl th, table.memtbl td {
+            border: 1px solid #efefef;
+            padding: 5px;
+            text-align: center;
+        }
+        
+
+        table.memtbl input[type="text"] { background-color: transparent; border: 1px solid #c0c0c0; width: 100%; height: 30px; box-sizing: border-box; background-color: rgba(255,255,255,.7); border-radius: 0;}
+
+        table.memtbl input[type="text"]:focus { border:1px solid #808080;  }
+    </style>
+    <script>
+        let lastActiveElement = null;
+
+        // 버튼 클릭 전 활성화된 요소를 추적
+        document.addEventListener("mousedown", (event) => {
+            if (event.target.tagName !== "BUTTON") return; // 버튼 클릭 시만 실행
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.tagName === "INPUT" && activeElement.closest("table")) {
+                lastActiveElement = activeElement; // 버튼 클릭 전에 활성화된 입력 필드 저장
+            } else {
+                lastActiveElement = null;
+            }
+        });
+
+        function addRow(event) {
+            console.log(lastActiveElement);
+
+            event.preventDefault(); // 버튼 클릭 시 기본 동작 차단
+            const table = document.querySelector("table");
+
+            // 새 행 생성
+            const newRow = document.createElement("tr");
+            newRow.innerHTML = `
+                <td><input type="text"></td>
+                <td><input type="text" class="quantity" oninput="calculateTotal(this)" pattern="\\d*" inputmode="numeric"></td>
+                <td></td>
+                <td><input type="text" class="price" oninput="calculateTotal(this)" pattern="\\d*" inputmode="numeric"></td>
+                <td class="total"></td>
+            `;
+
+            // 마지막 활성화된 요소의 위치를 확인
+            if (lastActiveElement && lastActiveElement.tagName === "INPUT") {
+                const currentRow = lastActiveElement.closest("tr");
+                if (currentRow) {
+                    currentRow.insertAdjacentElement("afterend", newRow); // 현재 행 아래에 추가
+
+                    // 새로 추가된 행의 첫 번째 <input>으로 포커스를 이동
+                    setTimeout(() => {
+                        newRow.querySelector("input").focus();
+                    }, 0);
+
+                    return;
+                }
+            }
+
+            // 활성화된 요소가 없으면 테이블의 마지막에 추가
+        //    table.appendChild(newRow);
+            table.querySelector("tbody").appendChild(newRow);
+
+            // 새로 추가된 행의 첫 번째 <input>으로 포커스를 이동
+            setTimeout(() => {
+                newRow.querySelector("input").focus();
+            }, 0);
+        }
+
+        function calculateTotal(element) {
+            const row = element.closest("tr");
+            const quantity = parseFloat(row.querySelector(".quantity").value) || 0;
+            const price = parseFloat(row.querySelector(".price").value) || 0;
+            const totalCell = row.querySelector(".total");
+
+            if (!isNaN(quantity) && !isNaN(price)) {
+                totalCell.textContent = quantity * price;
+            } else {
+                totalCell.textContent = '';
+            }
+
+            updateGrandTotal();
+        }
+
+        function updateGrandTotal() {
+            const rows = document.querySelectorAll("tbody tr");
+            let grandTotal = 0;
+
+            rows.forEach(row => {
+                const total = parseFloat(row.querySelector(".total").textContent) || 0;
+                grandTotal += total;
+            });
+
+            document.querySelector("tfoot td:last-child").textContent = grandTotal;
+        }
+
+        document.addEventListener("focusin", (event) => {
+            const targetRow = event.target.closest("tbody tr");
+            if (targetRow && targetRow.closest("table")) {
+                document.querySelectorAll("tr").forEach(row => row.classList.remove("selected-row"));
+                targetRow.classList.add("selected-row");
+            }
+        });
+
+        document.addEventListener("keydown", (event) => {
+            const activeElement = document.activeElement;
+            if (activeElement.tagName === "INPUT" && activeElement.closest("table")) {
+                const inputs = Array.from(document.querySelectorAll("input"));
+                const index = inputs.indexOf(activeElement);
+                const row = activeElement.closest("tr");
+                const inputsInRow = row.querySelectorAll("input").length;
+
+                switch (event.key) {
+                    case "ArrowUp":
+                        if (index - inputsInRow >= 0) inputs[index - inputsInRow].focus();
+                        break;
+                    case "ArrowDown":
+                        if (index + inputsInRow < inputs.length) inputs[index + inputsInRow].focus();
+                        break;
+                    case "ArrowLeft":
+                        if (index - 1 >= 0) inputs[index - 1].focus();
+                        break;
+                    case "ArrowRight":
+                        if (index + 1 < inputs.length) inputs[index + 1].focus();
+                        break;
+                }
+            }
+        });
+    </script>
+</head>
+<body>
+    
+    <button onclick="addRow(event)">행 추가</button>
+    <table class="memtbl">
+        <thead>
+            <tr>
+                <th>품목</th>
+                <th>수량</th>
+                <th>규격</th>
+                <th>단가</th>
+                <th>합계</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><input type="text" value="사과"></td>
+                <td><input type="text" class="quantity" oninput="calculateTotal(this)" pattern="\d*" inputmode="numeric"></td>
+                <td></td>
+                <td><input type="text" class="price" oninput="calculateTotal(this)" pattern="\d*" inputmode="numeric"></td>
+                <td class="total"></td>
+            </tr>
+            <tr>
+                <td><input type="text" value="귤"></td>
+                <td><input type="text" class="quantity" oninput="calculateTotal(this)" pattern="\d*" inputmode="numeric"></td>
+                <td></td>
+                <td><input type="text" class="price" oninput="calculateTotal(this)" pattern="\d*" inputmode="numeric"></td>
+                <td class="total"></td>
+            </tr>
+            <tr>
+                <td><input type="text" value="배"></td>
+                <td><input type="text" class="quantity" oninput="calculateTotal(this)" pattern="\d*" inputmode="numeric"></td>
+                <td></td>
+                <td><input type="text" class="price" oninput="calculateTotal(this)" pattern="\d*" inputmode="numeric"></td>
+                <td class="total"></td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="4">총계</td>                
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+</body>
+</html>
